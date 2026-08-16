@@ -1,0 +1,192 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/zerob13/dsh-better-markdown/master/assets/banner.png" alt="dsh-better-markdown — fast streaming Markdown for DeepSeek Harness" width="100%" />
+</p>
+
+<h1 align="center">dsh-better-markdown</h1>
+
+<p align="center">
+  用 <a href="https://www.npmjs.com/package/markstream-react"><code>markstream-react</code></a>
+  替换 DeepSeek Harness Web 的流式 Markdown 渲染链路。
+</p>
+
+<p align="center">
+  <a href="https://github.com/zerob13/dsh-better-markdown/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/zerob13/dsh-better-markdown?style=flat" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-111111.svg" /></a>
+  <a href="https://github.com/deepseek-ai/DeepSeek-Harness"><img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek_Harness-Web-111111.svg" /></a>
+  <a href="https://www.npmjs.com/package/markstream-react"><img alt="markstream-react 0.0.55" src="https://img.shields.io/badge/markstream--react-0.0.55-111111.svg" /></a>
+  <a href="https://mermaid.js.org/"><img alt="Mermaid 11" src="https://img.shields.io/badge/Mermaid-11-111111.svg" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/zerob13/dsh-better-markdown/blob/master/README.md"><b>中文</b></a> · <a href="https://github.com/zerob13/dsh-better-markdown/blob/master/README_EN.md">English</a>
+</p>
+
+`dsh-better-markdown` 是一个 DeepSeek Harness Web 客户端插件。安装后，Web 对话中所有带流式状态的 assistant Markdown 都由 `markstream-react` 解析和渲染；同一消息流结束后继续使用同一个 renderer，不会在完成瞬间切回另一套 Markdown 实现。
+
+> `markstream-react` 是 [`Simon-He95/markstream-vue`](https://github.com/Simon-He95/markstream-vue) monorepo 提供的 React 版本。本插件在 Harness 中使用的是 React package，不会引入 Vue runtime。
+
+## 为什么使用 Markstream React
+
+- **面向流式输出**：可持续处理尚未闭合的粗体、代码围栏、列表、表格和数学表达式，适合 LLM token stream。
+- **减少完成态切换**：流式与 settled assistant message 共用 Markstream renderer，避免完成时替换整棵 Markdown UI。
+- **更丰富的 Markdown**：支持常用 Markdown、表格、任务列表、引用、链接、图片、KaTeX 数学公式和 Mermaid 图表。
+- **长内容调度**：启用 Markstream 的 viewport-priority rendering，降低不可见节点抢占当前视口渲染时间的概率。
+- **保留 Harness 体验**：代码块继续使用 Harness 的 `CodeBlock`，保留语法高亮、复制按钮和文件 mention；reasoning、附件、停止状态也保持原行为。
+- **安全边界明确**：原始 HTML 使用 `htmlPolicy="escape"`；链接、图片和 settled file mention 继续执行 Harness 的限制策略；Mermaid 使用 strict mode。
+
+这些是实现层面的收益，不是未经测量的性能结论。仓库暂未提供与 Harness 内置 renderer 的跨版本 benchmark。
+
+## 效果截图
+
+### 代码块与语法高亮
+
+<img src="https://raw.githubusercontent.com/zerob13/dsh-better-markdown/master/screenshot/code.png" alt="DeepSeek Harness code blocks rendered inside dsh-better-markdown" width="100%" />
+
+### 图片、链接与 KaTeX 数学公式
+
+<img src="https://raw.githubusercontent.com/zerob13/dsh-better-markdown/master/screenshot/math.png" alt="Images, links and KaTeX math rendered by dsh-better-markdown" width="100%" />
+
+### Mermaid 图表
+
+<img src="https://raw.githubusercontent.com/zerob13/dsh-better-markdown/master/screenshot/mermaid.png" alt="Interactive Mermaid flowchart rendered in DeepSeek Harness" width="100%" />
+
+## 功能范围
+
+| 能力 | 行为 |
+|---|---|
+| Assistant streaming Markdown | 全部交给 `markstream-react` |
+| Settled assistant Markdown | 继续使用同一个 Markstream renderer |
+| Mermaid | 插件内置 `mermaid@11.16.1`，无需额外安装 |
+| Math | KaTeX inline / display math |
+| Code fences | 复用 Harness `CodeBlock` |
+| Raw HTML | 转义为文本，不注入 DOM |
+| Links and images | 仅允许安全的外部协议 |
+| Plan review / trajectory 等静态 surface | 继续使用 Harness 内置 `MarkdownText`；这些 surface 没有统一替换 slot |
+
+## 工作原理
+
+插件使用 Harness 公开的 client module 与 slot shadowing，不修改 Harness 源码，也不替换全局 React。
+
+```text
+Assistant token stream
+  -> Harness session projection
+  -> conversation.chat.node / assistant-step
+       |- priority -100: BetterAssistantNodeView
+       |                  -> markstream-react  (active)
+       `- priority    0: Harness built-in      (fallback)
+```
+
+低优先级 shadow entry 负责正常渲染；如果插件 renderer 抛错或被卸载，Harness 原 renderer 仍在 slot 中并自动接管。
+
+## 安装
+
+### 从源码安装（推荐）
+
+前置条件：DeepSeek Harness Web 可以正常启动，Node.js 20+，pnpm 10+。
+
+```sh
+git clone https://github.com/zerob13/dsh-better-markdown.git
+cd dsh-better-markdown
+pnpm install
+pnpm run check
+pnpm run build
+dsh plugin --profile web add "$(pwd)"
+dsh --profile web --dump-config
+dsh --profile web
+```
+
+Windows PowerShell 将 `"$(pwd)"` 替换为 `(Get-Location).Path`。
+
+配置输出应包含：
+
+```yaml
+# == dsh-better-markdown
+- id: better-markdown
+  name: dsh-better-markdown
+```
+
+打开 Web 后，assistant Markdown 根节点会带有：
+
+```html
+<div data-markdown-renderer="markstream-react">
+```
+
+### 直接从 Git 安装
+
+Git dependency 会执行本仓库的 `prepare` 构建。pnpm 10/11 可能要求在 Web profile 的 `pnpm-workspace.yaml` 中显式允许：
+
+```yaml
+allowBuilds:
+  dsh-better-markdown: true
+```
+
+然后安装：
+
+```sh
+dsh plugin --profile web add git+https://github.com/zerob13/dsh-better-markdown.git
+dsh --profile web
+```
+
+建议生产环境固定 commit SHA，而不是长期跟随默认分支。
+
+## 更新与移除
+
+本地源码安装：
+
+```sh
+git pull
+pnpm install
+pnpm run check
+pnpm run build
+```
+
+然后硬刷新 Web 页面。移除插件：
+
+```sh
+dsh plugin --profile web remove dsh-better-markdown
+```
+
+卸载会释放 slot shadow 和 Markstream component policy，Harness 内置 renderer 随即恢复。
+
+## 体积与取舍
+
+- `markstream-react`: `0.0.55`
+- `mermaid`: `11.16.1`
+- 当前 browser bundle：约 4.38 MB，gzip 约 1.20 MB
+- Mermaid 被完整打包以保证离线可用，因此不是轻量依赖；Monaco、D2、Infographic 等可选 peer 没有打包
+
+如果不需要 Mermaid，移除其 dependency 可以明显减小 bundle，但 Mermaid fence 将无法生成图形预览。
+
+## 开发
+
+```sh
+pnpm install
+pnpm run check
+pnpm run build
+pnpm pack --dry-run
+```
+
+主要文件：
+
+- `src/client/index.ts`：注册 Markstream component policy 和 assistant slot shadow
+- `src/client/renderer.tsx`：assistant node 与 Markdown renderer
+- `src/client/styles.css`：Harness token 适配
+- `cordis.patch.yml`：插件 bundle row
+- `tests/plugin.spec.tsx`：streaming、fallback、安全与 Mermaid 路由测试
+
+## 兼容性
+
+- DeepSeek Harness `0.1.0-rc.5` 及以上
+- React 18 及以上
+- 仅替换 Web conversation 的 `assistant-step`
+- 旧版 Harness 如果没有 priority-based slot shadowing，会直接加载失败，避免出现双 renderer
+
+## 致谢
+
+- [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness)
+- [markstream-vue / markstream-react](https://github.com/Simon-He95/markstream-vue)
+- [Mermaid](https://github.com/mermaid-js/mermaid)
+
+## License
+
+[MIT](./LICENSE)
