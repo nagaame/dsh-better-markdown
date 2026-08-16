@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { removeCustomComponents } from 'markstream-react'
 import { apply } from '../src/client/index.ts'
 import { MarkstreamMarkdown } from '../src/client/renderer.tsx'
-
-const t = ((key: string) => key) as never
 
 function mountPlugin() {
   const register = vi.fn(() => () => {})
@@ -44,10 +42,10 @@ describe('browser plugin', () => {
 
   it('renders streamed Markdown through markstream-react', () => {
     const plugin = mountPlugin()
-    const view = render(<MarkstreamMarkdown text={'# Stream\n\n**partial'} streaming t={t} />)
+    const view = render(<MarkstreamMarkdown text={'# Stream\n\n**partial'} streaming />)
     expect(view.container.querySelector('[data-markdown-renderer="markstream-react"] .markstream-react')).not.toBeNull()
     expect(screen.getByRole('heading', { name: 'Stream' })).toBeTruthy()
-    view.rerender(<MarkstreamMarkdown text={'# Stream\n\n**complete**'} streaming={false} t={t} />)
+    view.rerender(<MarkstreamMarkdown text={'# Stream\n\n**complete**'} streaming={false} />)
     expect(screen.getByText('complete').closest('strong')).not.toBeNull()
     plugin.dispose()
   })
@@ -58,7 +56,6 @@ describe('browser plugin', () => {
       <MarkstreamMarkdown
         text={'<script>alert(1)</script>\n\n[local](./secret) [safe](https://example.com)'}
         streaming={false}
-        t={t}
       />,
     )
     expect(view.container.querySelector('script')).toBeNull()
@@ -68,7 +65,7 @@ describe('browser plugin', () => {
     plugin.dispose()
   })
 
-  it('keeps DSH code blocks and only resolves file mentions after streaming', () => {
+  it('uses Markstream Shiki code blocks and only resolves file mentions after streaming', async () => {
     const plugin = mountPlugin()
     const open = vi.fn()
     const fileMentions = {
@@ -78,19 +75,24 @@ describe('browser plugin', () => {
     }
     const view = render(
       <MarkstreamMarkdown
-        text={'```ts\nconst value = 1\n```\n\n`src/index.ts`'}
+        text={'```\nplain text\n```\n\nAfter the first block\n\n```ts\nconst value = 1\n```\n\n`src/index.ts`'}
         streaming
-        t={t}
         fileMentions={fileMentions}
       />,
     )
-    expect(view.container.querySelector('.md-code-block')).not.toBeNull()
+    expect(view.container.querySelector('.code-block-container')).not.toBeNull()
+    expect(view.container.querySelector('.md-code-block')).toBeNull()
+    expect(view.container.querySelector('.monaco-editor')).toBeNull()
+    expect(view.container.querySelector('.node-placeholder')).toBeNull()
+    expect(screen.getByText('After the first block')).toBeTruthy()
+    await waitFor(() => {
+      expect(view.container.querySelector('.code-block-render .shiki')).not.toBeNull()
+    })
     expect(screen.queryByRole('button', { name: 'Open src/index.ts' })).toBeNull()
     view.rerender(
       <MarkstreamMarkdown
-        text={'```ts\nconst value = 1\n```\n\n`src/index.ts`'}
+        text={'```\nplain text\n```\n\nAfter the first block\n\n```ts\nconst value = 1\n```\n\n`src/index.ts`'}
         streaming={false}
-        t={t}
         fileMentions={fileMentions}
       />,
     )
@@ -104,7 +106,6 @@ describe('browser plugin', () => {
       <MarkstreamMarkdown
         text={'```mermaid\ngraph TD\n  A --> B\n```'}
         streaming={false}
-        t={t}
       />,
     )
     expect(view.container.querySelector('[data-markstream-mermaid="1"]')).not.toBeNull()

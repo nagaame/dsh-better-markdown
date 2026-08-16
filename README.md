@@ -32,15 +32,13 @@
 - **面向流式输出**：可持续处理尚未闭合的粗体、代码围栏、列表、表格和数学表达式，适合 LLM token stream。
 - **减少完成态切换**：流式与 settled assistant message 共用 Markstream renderer，避免完成时替换整棵 Markdown UI。
 - **更丰富的 Markdown**：支持常用 Markdown、表格、任务列表、引用、链接、图片、KaTeX 数学公式和 Mermaid 图表。
-- **长内容调度**：启用 Markstream 的 viewport-priority rendering，降低不可见节点抢占当前视口渲染时间的概率。
-- **保留 Harness 体验**：代码块继续使用 Harness 的 `CodeBlock`，保留语法高亮、复制按钮和文件 mention；reasoning、附件、停止状态也保持原行为。
+- **兼容 Harness 滚动区**：关闭不适用于聊天内部滚动容器的 viewport lazy mounting，避免可见内容停留在骨架占位状态。
+- **完整 Markstream 代码块**：fenced code 由 Markstream `MarkdownCodeBlockNode` 与 `stream-markdown` 渲染，使用 Shiki 流式高亮，并保留语言标题、复制和展开操作；reasoning、附件、停止状态仍保持 Harness 原行为。
 - **安全边界明确**：原始 HTML 使用 `htmlPolicy="escape"`；链接、图片和 settled file mention 继续执行 Harness 的限制策略；Mermaid 使用 strict mode。
-
-这些是实现层面的收益，不是未经测量的性能结论。仓库暂未提供与 Harness 内置 renderer 的跨版本 benchmark。
 
 ## 效果截图
 
-### 代码块与语法高亮
+### Markstream 代码块
 
 <img src="https://raw.githubusercontent.com/zerob13/dsh-better-markdown/master/screenshot/code.png" alt="DeepSeek Harness code blocks rendered inside dsh-better-markdown" width="100%" />
 
@@ -60,7 +58,7 @@
 | Settled assistant Markdown | 继续使用同一个 Markstream renderer |
 | Mermaid | 插件内置 `mermaid@11.16.1`，无需额外安装 |
 | Math | KaTeX inline / display math |
-| Code fences | 复用 Harness `CodeBlock` |
+| Code fences | 使用 Markstream `MarkdownCodeBlockNode` + `stream-markdown` + Shiki；未知语言回退为可见纯文本 |
 | Raw HTML | 转义为文本，不注入 DOM |
 | Links and images | 仅允许安全的外部协议 |
 | Plan review / trajectory 等静态 surface | 继续使用 Harness 内置 `MarkdownText`；这些 surface 没有统一替换 slot |
@@ -75,6 +73,7 @@ Assistant token stream
   -> conversation.chat.node / assistant-step
        |- priority -100: BetterAssistantNodeView
        |                  -> markstream-react  (active)
+       |                       `- fenced code -> stream-markdown -> Shiki
        `- priority    0: Harness built-in      (fallback)
 ```
 
@@ -161,8 +160,11 @@ dsh plugin --profile web remove dsh-better-markdown
 
 - `markstream-react`: `0.0.55`
 - `mermaid`: `11.16.1`
-- 当前 browser bundle：约 4.38 MB，gzip 约 1.20 MB
-- Mermaid 被完整打包以保证离线可用，因此不是轻量依赖；Monaco、D2、Infographic 等可选 peer 没有打包
+- `stream-markdown`: `0.0.16`
+- `shiki`: `4.4.3`
+- 当前 browser bundle：约 7.40 MB，gzip 约 1.59 MB
+- Mermaid 与 Shiki 代码高亮均被打包以保证离线可用；Shiki 使用纯 JavaScript 正则引擎与 34 种常用语言的 fine-grained bundle
+- Monaco runtime、D2、Infographic 等可选 peer 没有打包；未知代码语言使用 Markstream 的纯文本回退
 
 如果不需要 Mermaid，移除其 dependency 可以明显减小 bundle，但 Mermaid fence 将无法生成图形预览。
 
@@ -181,6 +183,7 @@ pnpm pack --dry-run
 
 - `src/client/index.ts`：注册 Markstream component policy 和 assistant slot shadow
 - `src/client/renderer.tsx`：assistant node 与 Markdown renderer
+- `src/client/shiki.ts`：单文件插件使用的 fine-grained Shiki bundle
 - `src/client/styles.css`：Harness token 适配
 - `cordis.patch.yml`：插件 bundle row
 - `tests/plugin.spec.tsx`：streaming、fallback、安全与 Mermaid 路由测试

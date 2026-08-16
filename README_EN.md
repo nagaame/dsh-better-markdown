@@ -32,15 +32,13 @@
 - **Streaming-first parsing:** keeps handling incomplete emphasis, code fences, lists, tables, and math while LLM tokens are still arriving.
 - **No completion-time renderer swap:** streaming and settled assistant messages share the same Markstream renderer.
 - **Richer output:** common Markdown, tables, task lists, blockquotes, links, images, KaTeX math, and Mermaid diagrams.
-- **Long-response scheduling:** viewport-priority rendering reduces work spent on nodes outside the current viewport.
-- **Native Harness behavior:** code fences still use Harness `CodeBlock`, preserving highlighting, copy actions, and file mentions. Reasoning, attachments, and interruption states also remain intact.
+- **Harness scroll-container compatibility:** disables viewport lazy mounting that cannot reliably observe nodes inside the chat scroller, preventing visible content from getting stuck as skeleton placeholders.
+- **Full Markstream code blocks:** fenced code is rendered by Markstream's `MarkdownCodeBlockNode` and `stream-markdown`, with streaming Shiki highlighting plus language headers, copy actions, and expansion. Reasoning, attachments, and interruption states retain Harness behavior.
 - **Explicit security policy:** raw HTML uses `htmlPolicy="escape"`; links, images, and settled file mentions retain Harness restrictions; Mermaid runs in strict mode.
-
-These are implementation-level benefits, not an unmeasured performance claim. This repository does not yet publish a cross-version benchmark against the built-in Harness renderer.
 
 ## Screenshots
 
-### Code blocks and syntax highlighting
+### Markstream code blocks
 
 <img src="https://raw.githubusercontent.com/zerob13/dsh-better-markdown/master/screenshot/code.png" alt="DeepSeek Harness code blocks rendered inside dsh-better-markdown" width="100%" />
 
@@ -60,7 +58,7 @@ These are implementation-level benefits, not an unmeasured performance claim. Th
 | Settled assistant Markdown | Keeps the same Markstream renderer |
 | Mermaid | Bundles `mermaid@11.16.1`; no separate installation |
 | Math | KaTeX inline and display math |
-| Code fences | Reuses Harness `CodeBlock` |
+| Code fences | Uses Markstream `MarkdownCodeBlockNode` + `stream-markdown` + Shiki; unknown languages fall back to visible plain text |
 | Raw HTML | Escaped as text instead of being injected into the DOM |
 | Links and images | Restricted to safe external protocols |
 | Static plan review / trajectory surfaces | Keep Harness `MarkdownText`; these surfaces expose no shared replacement slot |
@@ -75,6 +73,7 @@ Assistant token stream
   -> conversation.chat.node / assistant-step
        |- priority -100: BetterAssistantNodeView
        |                  -> markstream-react  (active)
+       |                       `- fenced code -> stream-markdown -> Shiki
        `- priority    0: Harness built-in      (fallback)
 ```
 
@@ -161,8 +160,11 @@ Unloading disposes the slot shadow and Markstream component policy, immediately 
 
 - `markstream-react`: `0.0.55`
 - `mermaid`: `11.16.1`
-- Current browser bundle: about 4.38 MB, about 1.20 MB gzip
-- Mermaid is bundled for offline use; optional Monaco, D2, and Infographic peers are not bundled
+- `stream-markdown`: `0.0.16`
+- `shiki`: `4.4.3`
+- Current browser bundle: about 7.40 MB, about 1.59 MB gzip
+- Mermaid and Shiki syntax highlighting are bundled for offline use; Shiki uses its JavaScript regex engine and a fine-grained bundle of 34 common languages
+- The optional Monaco runtime, D2, and Infographic peers are not bundled; unknown code languages use Markstream's plain-text fallback
 
 Removing Mermaid can substantially reduce the bundle, but Mermaid fences will no longer produce diagram previews.
 
@@ -181,6 +183,7 @@ Key files:
 
 - `src/client/index.ts`: Markstream component policy and assistant slot shadow
 - `src/client/renderer.tsx`: assistant node and Markdown renderer
+- `src/client/shiki.ts`: fine-grained Shiki bundle for the single-file plugin build
 - `src/client/styles.css`: Harness token adaptation
 - `cordis.patch.yml`: plugin bundle row
 - `tests/plugin.spec.tsx`: streaming, fallback, security, and Mermaid routing tests

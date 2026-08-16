@@ -4,7 +4,13 @@ import type { Context } from '@deepseek-ai/cordis'
 import { removeCustomComponents, setCustomComponents } from 'markstream-react'
 import 'markstream-react/index.css'
 import './styles.css'
-import { BetterAssistantNodeView, DshCodeBlockNode, DshImageNode, DshInlineCodeNode, DshLinkNode } from './renderer.tsx'
+import {
+  BetterAssistantNodeView,
+  DshCodeBlockNode,
+  DshImageNode,
+  DshInlineCodeNode,
+  DshLinkNode,
+} from './renderer.tsx'
 
 const CUSTOM_COMPONENT_SCOPE = 'dsh-better-markdown'
 

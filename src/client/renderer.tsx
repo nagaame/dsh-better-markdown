@@ -1,9 +1,9 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import MarkdownRender from 'markstream-react'
+import MarkdownRender, { MarkdownCodeBlockNode } from 'markstream-react'
 import type { NodeComponentProps } from 'markstream-react'
 import type { CodeBlockNode, ImageNode, InlineCodeNode, LinkNode } from 'stream-markdown-parser'
-import { CodeBlock, DisclosureRow, IconThinkOutline14, JsonBlock } from '@deepseek-ai/dsh-client-ui-primitives'
+import { DisclosureRow, IconThinkOutline14, JsonBlock } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ImageGallery } from '@deepseek-ai/dsh-client-ui-attachment'
 import type { ImageLoader } from '@deepseek-ai/dsh-client-ui-attachment'
@@ -11,31 +11,18 @@ import type {
   AssistantChatData, ChatNodeViewProps, ChatViewSlotProps, TurnTailOwnerProps,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import { SHIKI_LANGUAGES } from './shiki.ts'
 
 const CUSTOM_COMPONENT_SCOPE = 'dsh-better-markdown'
-
-interface RendererOptions {
-  copyLabel: string
-  copiedLabel: string
-  fileMentions?: MarkdownFileMentions | undefined
-}
-
-function rendererOptions(ctx: NodeComponentProps['ctx']): RendererOptions | undefined {
-  const options = ctx?.codeBlockProps
-  if (options === undefined) return undefined
-  const copyLabel = options.copyLabel
-  const copiedLabel = options.copiedLabel
-  if (typeof copyLabel !== 'string' || typeof copiedLabel !== 'string') return undefined
-  return {
-    copyLabel,
-    copiedLabel,
-    fileMentions: isFileMentions(options.fileMentions) ? options.fileMentions : undefined,
-  }
-}
 
 function isFileMentions(value: unknown): value is MarkdownFileMentions {
   return typeof value === 'object' && value !== null && 'resolve' in value
     && typeof value.resolve === 'function'
+}
+
+function rendererFileMentions(ctx: NodeComponentProps['ctx']): MarkdownFileMentions | undefined {
+  const value = ctx?.codeBlockProps?.fileMentions
+  return isFileMentions(value) ? value : undefined
 }
 
 function safeLink(url: string): string | undefined {
@@ -50,19 +37,6 @@ function safeLink(url: string): string | undefined {
 function remoteImage(url: string): string | undefined {
   const safe = safeLink(url)
   return safe?.startsWith('http:') || safe?.startsWith('https:') ? safe : undefined
-}
-
-/** DSH-native fenced-code leaf under Markstream's parser and streaming tree. */
-export function DshCodeBlockNode({ node, ctx }: NodeComponentProps<CodeBlockNode>) {
-  const options = rendererOptions(ctx)
-  return (
-    <CodeBlock
-      code={node.code}
-      lang={node.language || undefined}
-      copyLabel={options?.copyLabel}
-      copiedLabel={options?.copiedLabel}
-    />
-  )
 }
 
 /** Preserve DSH's external-only Markdown image policy. */
@@ -85,7 +59,7 @@ export function DshInlineCodeNode({ node, ctx }: NodeComponentProps<InlineCodeNo
   if (href?.startsWith('http:') || href?.startsWith('https:')) {
     return <code><a href={href} target="_blank" rel="noopener noreferrer">{node.code}</a></code>
   }
-  const mention = rendererOptions(ctx)?.fileMentions?.resolve(node.code)
+  const mention = rendererFileMentions(ctx)?.resolve(node.code)
   if (mention !== undefined) {
     return (
       <code>
@@ -104,18 +78,29 @@ export function DshInlineCodeNode({ node, ctx }: NodeComponentProps<InlineCodeNo
   return <code>{node.code}</code>
 }
 
+/** Use Markstream's worker-free Shiki renderer for fenced code blocks. */
+export function DshCodeBlockNode({ node, ctx }: NodeComponentProps<CodeBlockNode>) {
+  return (
+    <MarkdownCodeBlockNode
+      node={node}
+      loading={node.loading}
+      stream={ctx?.codeBlockStream ?? true}
+      isDark={ctx?.isDark ?? false}
+      langs={SHIKI_LANGUAGES}
+      onCopy={ctx?.events.onCopy}
+    />
+  )
+}
+
 /** Markstream wrapper configured for untrusted assistant output. */
-export const MarkstreamMarkdown = memo(function MarkstreamMarkdown({ text, streaming, t, fileMentions }: {
+export const MarkstreamMarkdown = memo(function MarkstreamMarkdown({ text, streaming, fileMentions }: {
   text: string
   streaming: boolean
-  t: ChatViewSlotProps['t']
   fileMentions?: MarkdownFileMentions | undefined
 }) {
   const codeBlockProps = useMemo(() => ({
-    copyLabel: t('copy'),
-    copiedLabel: t('copied'),
     fileMentions: streaming ? undefined : fileMentions,
-  }), [fileMentions, streaming, t])
+  }), [fileMentions, streaming])
   return (
     <div className="dsh-better-markdown__markdown" data-markdown-renderer="markstream-react">
       <MarkdownRender
@@ -125,7 +110,7 @@ export const MarkstreamMarkdown = memo(function MarkstreamMarkdown({ text, strea
         htmlPolicy="escape"
         fade={false}
         smoothStreaming={false}
-        viewportPriority
+        viewportPriority={false}
         codeBlockStream={streaming}
         codeBlockProps={codeBlockProps}
       />
@@ -204,7 +189,7 @@ function BetterAssistantMarkdown({ blocks, streaming, interrupted, loadImage, me
     switch (block.kind) {
       case 'text':
         rendered.push(
-          <MarkstreamMarkdown key={index} text={block.text} streaming={streaming} t={t} fileMentions={mentions} />,
+          <MarkstreamMarkdown key={index} text={block.text} streaming={streaming} fileMentions={mentions} />,
         )
         break
       case 'reasoning':

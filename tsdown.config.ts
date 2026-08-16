@@ -18,6 +18,7 @@ const CLIENT_EXTERNALS = [
 ]
 const CSS_PREFIX = '\0dsh-better-markdown-css:'
 const CSS_SUFFIX = '.mjs'
+const STREAM_MONACO_STUB = '\0dsh-better-markdown-stream-monaco-stub'
 
 export default defineConfig([
   {
@@ -47,6 +48,16 @@ export default defineConfig([
       onlyBundle: false,
     },
     plugins: [{
+      name: 'dsh-better-markdown-code-block-dependencies',
+      resolveId(source) {
+        if (source === 'shiki') return resolve('src/client/shiki.ts')
+        if (source === 'stream-monaco') return STREAM_MONACO_STUB
+        return null
+      },
+      load(id) {
+        return id === STREAM_MONACO_STUB ? 'export {}' : null
+      },
+    }, {
       name: 'dsh-better-markdown-css',
       async resolveId(source, importer) {
         if (!source.endsWith('.css')) return null
