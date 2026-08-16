@@ -2,6 +2,7 @@
   "name": "dsh-better-markdown",
   "version": "0.1.0",
   "description": "DeepSeek Harness Web plugin that renders streamed assistant Markdown with markstream-react.",
+  "packageManager": "pnpm@10.33.3",
   "author": "duskzhen",
   "homepage": "https://github.com/zerob13/dsh-better-markdown#readme",
   "repository": {
@@ -10,6 +11,10 @@
   },
   "bugs": {
     "url": "https://github.com/zerob13/dsh-better-markdown/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "type": "module",
   "main": "./lib/index.js",

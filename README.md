@@ -11,6 +11,8 @@
 
 <p align="center">
   <a href="https://github.com/zerob13/dsh-better-markdown/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/zerob13/dsh-better-markdown?style=flat" /></a>
+  <a href="https://www.npmjs.com/package/dsh-better-markdown"><img alt="npm version" src="https://img.shields.io/npm/v/dsh-better-markdown?style=flat&color=111111" /></a>
+  <a href="https://github.com/zerob13/dsh-better-markdown/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zerob13/dsh-better-markdown/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-111111.svg" /></a>
   <a href="https://github.com/deepseek-ai/DeepSeek-Harness"><img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek_Harness-Web-111111.svg" /></a>
   <a href="https://www.npmjs.com/package/markstream-react"><img alt="markstream-react 0.0.55" src="https://img.shields.io/badge/markstream--react-0.0.55-111111.svg" /></a>
@@ -80,7 +82,23 @@ Assistant token stream
 
 ## 安装
 
-### 从源码安装（推荐）
+### 从 npm 安装（推荐）
+
+前置条件：DeepSeek Harness Web 可以正常启动。
+
+```sh
+dsh plugin --profile web add dsh-better-markdown
+dsh --profile web --dump-config
+dsh --profile web
+```
+
+更新插件：
+
+```sh
+dsh plugin --profile web add dsh-better-markdown@latest
+```
+
+### 从源码安装
 
 前置条件：DeepSeek Harness Web 可以正常启动，Node.js 20+，pnpm 10+。
 
@@ -129,18 +147,9 @@ dsh --profile web
 
 建议生产环境固定 commit SHA，而不是长期跟随默认分支。
 
-## 更新与移除
+## 移除
 
-本地源码安装：
-
-```sh
-git pull
-pnpm install
-pnpm run check
-pnpm run build
-```
-
-然后硬刷新 Web 页面。移除插件：
+移除插件：
 
 ```sh
 dsh plugin --profile web remove dsh-better-markdown
@@ -165,6 +174,8 @@ pnpm run check
 pnpm run build
 pnpm pack --dry-run
 ```
+
+维护者发布流程：先让 `package.json` 版本与 `vX.Y.Z` tag 保持一致，再发布对应的 GitHub Release。`publish.yml` 会验证版本、执行测试与构建，并通过 npm trusted publishing 发布公开包；prerelease 不会发布。
 
 主要文件：
 

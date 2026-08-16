@@ -11,6 +11,8 @@
 
 <p align="center">
   <a href="https://github.com/zerob13/dsh-better-markdown/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/zerob13/dsh-better-markdown?style=flat" /></a>
+  <a href="https://www.npmjs.com/package/dsh-better-markdown"><img alt="npm version" src="https://img.shields.io/npm/v/dsh-better-markdown?style=flat&color=111111" /></a>
+  <a href="https://github.com/zerob13/dsh-better-markdown/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zerob13/dsh-better-markdown/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-111111.svg" /></a>
   <a href="https://github.com/deepseek-ai/DeepSeek-Harness"><img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek_Harness-Web-111111.svg" /></a>
   <a href="https://www.npmjs.com/package/markstream-react"><img alt="markstream-react 0.0.55" src="https://img.shields.io/badge/markstream--react-0.0.55-111111.svg" /></a>
@@ -80,7 +82,23 @@ The shadow entry handles normal rendering. If the plugin renderer throws or is u
 
 ## Installation
 
-### Install from source (recommended)
+### Install from npm (recommended)
+
+Prerequisite: a working DeepSeek Harness Web installation.
+
+```sh
+dsh plugin --profile web add dsh-better-markdown
+dsh --profile web --dump-config
+dsh --profile web
+```
+
+Update the plugin:
+
+```sh
+dsh plugin --profile web add dsh-better-markdown@latest
+```
+
+### Install from source
 
 Prerequisites: a working DeepSeek Harness Web installation, Node.js 20+, and pnpm 10+.
 
@@ -129,18 +147,9 @@ dsh --profile web
 
 Pin a commit SHA for production use instead of following the default branch indefinitely.
 
-## Update and remove
+## Remove
 
-For a local source installation:
-
-```sh
-git pull
-pnpm install
-pnpm run check
-pnpm run build
-```
-
-Hard-refresh the Web UI afterward. To remove the plugin:
+To remove the plugin:
 
 ```sh
 dsh plugin --profile web remove dsh-better-markdown
@@ -165,6 +174,8 @@ pnpm run check
 pnpm run build
 pnpm pack --dry-run
 ```
+
+Maintainers release by matching the `package.json` version to a `vX.Y.Z` tag and publishing the corresponding GitHub Release. `publish.yml` validates the version, runs checks and a build, then publishes the public package through npm trusted publishing. Prereleases are not published.
 
 Key files:
 
