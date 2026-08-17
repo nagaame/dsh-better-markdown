@@ -179,6 +179,17 @@
   line-height: 24px;
 }
 
+/* Code-block user messages should span the same max bubble width as long
+   plain-text messages instead of shrinking to the code block's intrinsic
+   width. */
+.dsh-better-markdown__user-stack--code {
+  min-width: min(525px, 82%);
+}
+
+.dsh-better-markdown__user-bubble--code {
+  align-self: stretch;
+}
+
 /* The user bubble is more compact than the assistant prose column. */
 .dsh-better-markdown__user-bubble .dsh-better-markdown__markdown {
   font: 16px/24px var(--dsw-font-family);

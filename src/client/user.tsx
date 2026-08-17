@@ -161,12 +161,19 @@ export function UserMarkdownBubble({ content, time, loadImage, t }: {
   const { text, images, rest } = useMemo(() => contentParts(content), [content])
   const truncated = (total: number): string => t('json.truncated', { total })
   const showBubble = text !== '' || rest.length > 0
+  const hasCodeBlock = /(^|\n)\s*(```|~~~)/.test(text)
+  const stackClassName = hasCodeBlock
+    ? 'dsh-better-markdown__user-stack dsh-better-markdown__user-stack--code'
+    : 'dsh-better-markdown__user-stack'
+  const bubbleClassName = hasCodeBlock
+    ? 'dsh-better-markdown__user-bubble dsh-better-markdown__user-bubble--code'
+    : 'dsh-better-markdown__user-bubble'
   return (
     <div className="dsh-better-markdown__user-row" data-time-hover-root>
-      <div className="dsh-better-markdown__user-stack">
+      <div className={stackClassName}>
         <ImageGallery images={images} load={imageLoader} align="end" labels={messageImageLabels(t)} />
         {showBubble && (
-          <div className="dsh-better-markdown__user-bubble">
+          <div className={bubbleClassName}>
             {text !== '' && <MarkstreamMarkdown text={text} streaming={false} />}
             {rest.map((block, i) => (
               <JsonBlock
