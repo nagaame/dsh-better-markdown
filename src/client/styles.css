@@ -195,7 +195,6 @@
 .dsh-better-markdown__user-bubble .markstream-react .code-fallback-plain {
   white-space: pre-wrap !important;
   overflow-wrap: anywhere !important;
-  word-break: break-word !important;
   overflow-x: hidden !important;
   max-width: 100% !important;
 }
@@ -211,7 +210,6 @@
 .dsh-better-markdown__user-bubble .markstream-react .code-block-content pre.shiki {
   white-space: pre-wrap !important;
   overflow-wrap: anywhere !important;
-  word-break: break-word !important;
   overflow-x: hidden !important;
   max-width: 100% !important;
 }
